@@ -1,0 +1,114 @@
+import numpy as np
+import pandas as pd
+from pandas import Series,DataFrame
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style('whitegrid')
+%matplotlib inline
+
+from sklearn.datasets import load_boston
+boston = load_boston()
+print (boston.DESCR)
+
+#Visualizing current data
+plt.hist(boston.target,bins=50)
+plt.xlabel('Prices in $1000s')
+plt.ylabel('Number of houses')
+plt.scatter(boston.data[:,5],boston.target)
+plt.ylabel('Price in $1000s')
+plt.xlabel('Number of rooms')
+
+boston_df = DataFrame(boston.data)
+boston_df.columns = boston.feature_names
+boston_df.head()
+boston_df['Price'] = boston.target
+boston_df.head()
+
+sns.lmplot('RM','Price',data=boston_df)
+
+# Using Numpy for a Univariate Linear Regression
+# Set up X as median room values
+X = boston_df.RM
+X.shape
+# Use v to make X two-dimensional
+X = np.vstack(boston_df.RM)
+X.shape
+
+# Set up Y as the target price of the houses.
+Y = boston_df.Price
+
+# Create the X array in the form [X 1]
+X = np.array( [ [value,1] for value in X] )
+X
+
+# Now get out m and b values for our best fit line
+m , b = np.linalg.lstsq(X,Y)[0]
+
+# First the original points, Price vs Avg Number of Rooms
+plt.plot(boston_df.RM,boston_df.Price,'o')
+
+# Next the best fit line
+x = boston_df.RM
+plt.plot(x, m*x + b,'r',label='Best Fit Line')
+
+# Get the resulting array
+result = np.linalg.lstsq(X,Y)
+
+# Get the total
+error_total = result[1] 
+
+# Get the root mean square error
+rmse = np.sqrt(error_total/len(X)) 
+print ('The root mean square error was %.2f' %rmse)
+
+# Using scikit learn to implement a multivariate regression
+# Import for Linear Regression
+import sklearn
+from sklearn.linear_model import LinearRegression
+
+# Create a LinearRegression Object
+lreg = LinearRegression()
+X_multi = boston_df.drop('Price',1)
+Y_target = boston_df.Price
+lreg.fit(X_multi,Y_target)
+
+print(' The estimated intercept coefficient is %.2f ' %lreg.intercept_)
+print(' The number of coefficients used was %d ' % len(lreg.coef_))
+
+coeff_df = DataFrame(boston_df.columns)
+coeff_df.columns = ['Features']
+coeff_df['Coefficient Estimate'] = Series(lreg.coef_)
+coeff_df
+
+# Using Training and Validation
+# Grab the output and set as X and Y test and train data sets! cross.validation change to model.selection
+X_train, X_test, Y_train, Y_test = sklearn.model_selection.train_test_split(X,boston_df.Price)
+print (X_train.shape, X_test.shape, Y_train.shape, Y_test.shape)
+
+# Predicting Prices
+# Create our regression object
+lreg = LinearRegression()
+# Once again do a linear regression, except only on the training sets this time
+lreg.fit(X_train,Y_train)
+
+# Predictions on training and testing setslreg
+pred_train = lreg.predict(X_train)
+pred_test = lreg.predict(X_test)
+
+# get the mean square error
+print("Fit a model X_train, and calculate MSE with Y_train: %.2f"  % np.mean((Y_train - pred_train) ** 2))    
+print("Fit a model X_train, and calculate MSE with X_test and Y_test: %.2f"  %np.mean((Y_test - pred_test) ** 2))
+
+#  Residual Plots ( Residual = Observed value - Predicted value)
+# Scatter plot the training data
+train = plt.scatter(pred_train,(Y_train-pred_train),c='b',alpha=0.5)
+# Scatter plot the testing data
+test = plt.scatter(pred_test,(Y_test-pred_test),c='r',alpha=0.5)
+# Plot a horizontal axis line at 0
+plt.hlines(y=0,xmin=-10,xmax=50)
+#Labels
+plt.legend((train,test),('Training','Test'),loc='lower left')
+plt.title('Residual Plots')
+
+# Residual plot of all the dataset using seaborn
+sns.residplot('RM', 'Price', data = boston_df)
